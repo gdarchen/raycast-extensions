@@ -1,5 +1,26 @@
 import type { CopilotInternalUserResponse, CopilotUsage } from "../services/copilot";
 
+type QuotaSnapshot = {
+  entitlement?: number;
+  percent_remaining?: number;
+  remaining?: number;
+  unlimited?: boolean;
+};
+
+/**
+ * Calculates the consumed percentage from a quota snapshot
+ * Uses percent_remaining directly from the API
+ */
+const getConsumedPercentage = (snapshot: QuotaSnapshot | undefined): number => {
+  if (!snapshot || snapshot.unlimited) return 0;
+
+  if (snapshot.percent_remaining !== undefined) {
+    return 100 - snapshot.percent_remaining;
+  }
+
+  return 0;
+};
+
 /**
  * Parses the internal Copilot usage response to extract usage data.
  * @param response The internal Copilot usage response
@@ -11,23 +32,17 @@ export const parseUsageData = (response: CopilotInternalUserResponse): CopilotUs
   // Extract completions (code completions)
   const completionsSnapshot = snapshots.completions;
   const inlineSuggestionsLimit = completionsSnapshot?.unlimited ? null : (completionsSnapshot?.entitlement ?? 0);
-  const inlineSuggestionsCurrent = completionsSnapshot?.unlimited
-    ? 0
-    : (completionsSnapshot?.entitlement ?? 0) - (completionsSnapshot?.remaining ?? 0);
+  const inlineSuggestionsCurrent = getConsumedPercentage(completionsSnapshot);
 
   // Extract chat messages
   const chatSnapshot = snapshots.chat;
   const chatMessagesLimit = chatSnapshot?.unlimited ? null : (chatSnapshot?.entitlement ?? 0);
-  const chatMessagesCurrent = chatSnapshot?.unlimited
-    ? 0
-    : (chatSnapshot?.entitlement ?? 0) - (chatSnapshot?.remaining ?? 0);
+  const chatMessagesCurrent = getConsumedPercentage(chatSnapshot);
 
   // Extract premium interactions (premium requests)
   const premiumSnapshot = snapshots.premium_interactions;
   const premiumRequestsLimit = premiumSnapshot?.unlimited ? null : (premiumSnapshot?.entitlement ?? 0);
-  const premiumRequestsCurrent = premiumSnapshot?.unlimited
-    ? 0
-    : (premiumSnapshot?.entitlement ?? 0) - (premiumSnapshot?.remaining ?? 0);
+  const premiumRequestsCurrent = getConsumedPercentage(premiumSnapshot);
 
   return {
     inlineSuggestions: {
@@ -42,6 +57,6 @@ export const parseUsageData = (response: CopilotInternalUserResponse): CopilotUs
       current: premiumRequestsCurrent,
       limit: premiumRequestsLimit,
     },
-    allowanceResetAt: response.quota_reset_date_utc || new Date().toISOString(),
+    allowanceResetAt: response.quota_reset_date_utc,
   };
 };

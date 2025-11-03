@@ -12,18 +12,16 @@ function Command() {
     if (limit === null) {
       return "Included";
     }
-    const percentage = ((current / limit) * 100).toFixed(1);
-    return `${percentage}%`;
+    return `${current.toFixed(1)}%`;
   };
 
   const getProgressColor = (current: number, limit: number | null): Color => {
     if (limit === null) {
       return Color.Green;
     }
-    const percentage = (current / limit) * 100;
-    if (percentage >= 90) {
+    if (current >= 90) {
       return Color.Red;
-    } else if (percentage >= 70) {
+    } else if (current >= 70) {
       return Color.Orange;
     }
     return Color.Blue;

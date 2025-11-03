@@ -22,7 +22,7 @@
       "name": "copilotAppsJsonPath",
       "type": "textfield",
       "title": "Copilot Apps.json Path (Optional)",
-      "description": "Path to GitHub Copilot's apps.json file. Defaults to ~/.config/github-copilot/apps.json",
+      "description": "Path to GitHub Copilot's apps.json file (auto-generated when you sign in to Copilot via an IDE extension). Defaults to ~/.config/github-copilot/apps.json",
       "required": false
     }
   ],
