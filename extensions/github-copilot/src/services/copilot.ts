@@ -1,7 +1,11 @@
 import { getAccessToken } from "@raycast/utils";
 import { getOctokit } from "../lib/oauth";
 import { handleGitHubError } from "../lib/github-client";
-import { AI, environment } from "@raycast/api";
+import { AI, environment, getPreferenceValues } from "@raycast/api";
+import { parseUsageData } from "../tools/parse-copilot-usage";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 
 // The state of an agent session returned from Copilot API
 enum AgentSessionState {
@@ -91,6 +95,73 @@ type GetJobResponse =
         number: number;
       };
     };
+
+type CopilotInternalUserResponse = {
+  access_type_sku: string;
+  analytics_tracking_id: string;
+  assigned_date: string;
+  can_signup_for_limited: boolean;
+  chat_enabled: boolean;
+  copilot_plan: string;
+  organization_login_list: string[];
+  organization_list: Array<{
+    login: string;
+    name: string;
+  }>;
+  quota_reset_date: string;
+  quota_snapshots: {
+    chat?: {
+      entitlement: number;
+      overage_count: number;
+      overage_permitted: boolean;
+      percent_remaining: number;
+      quota_id: string;
+      quota_remaining: number;
+      remaining: number;
+      unlimited: boolean;
+      timestamp_utc: string;
+    };
+    completions?: {
+      entitlement: number;
+      overage_count: number;
+      overage_permitted: boolean;
+      percent_remaining: number;
+      quota_id: string;
+      quota_remaining: number;
+      remaining: number;
+      unlimited: boolean;
+      timestamp_utc: string;
+    };
+    premium_interactions?: {
+      entitlement: number;
+      overage_count: number;
+      overage_permitted: boolean;
+      percent_remaining: number;
+      quota_id: string;
+      quota_remaining: number;
+      remaining: number;
+      unlimited: boolean;
+      timestamp_utc: string;
+    };
+  };
+  quota_reset_date_utc: string;
+};
+
+type CopilotUsage = {
+  inlineSuggestions: {
+    current: number;
+    limit: number | null;
+  };
+  chatMessages: {
+    current: number;
+    limit: number | null;
+  };
+  premiumRequests: {
+    current: number;
+    limit: number | null;
+  };
+  allowanceResetAt: string;
+};
 
 export async function createTask(
   repository: string,
@@ -187,6 +258,37 @@ const pollJobUntilPullRequestUrlReady = async ({
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Get the GitHub Copilot authentication token from copilotAppsJsonPath (defaults to ~/.config/github-copilot/apps.json)
+ */
+const getCopilotToken = async (): Promise<string> => {
+  try {
+    const prefs = getPreferenceValues<{ copilotAppsJsonPath?: string }>();
+    const appsJsonPath = prefs.copilotAppsJsonPath?.trim()
+      ? prefs.copilotAppsJsonPath.trim()
+      : join(homedir(), ".config", "github-copilot", "apps.json");
+
+    const appsJsonContent = readFileSync(appsJsonPath, "utf-8");
+    const appsJson = JSON.parse(appsJsonContent) as Record<string, Record<string, unknown>>;
+
+    // Get the first available oauth_token from the apps.json
+    // Structure: { "github.com:appId": { user: string, oauth_token: string, githubAppId: string }, ... }
+    for (const appKey in appsJson) {
+      const appData = appsJson[appKey];
+      if (appData && typeof appData === "object" && "oauth_token" in appData) {
+        return appData.oauth_token as string;
+      }
+    }
+
+    throw new Error("No authentication token found in apps.json");
+  } catch (error) {
+    console.error("Could not read token from apps.json:", error);
+    throw new Error(
+      "Failed to read GitHub Copilot authentication token from apps.json. Please authenticate with GitHub Copilot first or check the Copilot apps.json Path preference.",
+    );
+  }
+};
 
 export const fetchSessions = async (): Promise<PullRequestWithAgentSessions[]> => {
   const { token } = getAccessToken();
@@ -294,6 +396,26 @@ export const fetchSessions = async (): Promise<PullRequestWithAgentSessions[]> =
   return transformedPullRequestsWithAgentSessions;
 };
 
+export const fetchCopilotUsage = async (): Promise<CopilotUsage> => {
+  const token = await getCopilotToken();
+
+  try {
+    const response = await fetch("https://api.github.com/copilot_internal/user", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Copilot usage: ${response.status} ${response.statusText}`);
+    }
+
+    const data = JSON.parse(responseText) as CopilotInternalUserResponse;
+    return parseUsageData(data);
+  } catch (error) {
+    throw new Error(`Unable to fetch Copilot usage: ${error}`);
+  }
+};
+
 // Export types for use in other files
-export type { AgentSession, PullRequest, PullRequestWithAgentSessions };
+export type { AgentSession, PullRequest, PullRequestWithAgentSessions, CopilotUsage, CopilotInternalUserResponse };
 export { AgentSessionState };
