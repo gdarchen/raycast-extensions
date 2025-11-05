@@ -13,24 +13,27 @@ Start and track [GitHub Copilot coding agent](https://docs.github.com/en/enterpr
 
 - **Access to [GitHub Copilot coding agent](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/coding-agent/coding-agent)**, available for Copilot Pro, Pro+, Business and Enterpise users. If you're a Business or Enterprise subscriber, an administrator will have to [enable](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/coding-agent/enable-coding-agent) the feature.
 - **Authentication with your GitHub account with OAuth**: The first time you use the extension, you'll be asked to connect your account, providing `repo`, `workflow` and `read:org` permissions.
-- **GitHub Copilot IDE extension** (VS Code, JetBrains, etc.): Required for the Copilot Usage command. Sign in to Copilot through your IDE to generate the authentication configuration file.
 
 ### AI Tools
 
 This extension provides AI tools that can be used through Raycast AI to interact with GitHub Copilot:
 
 #### `create-task`
+
 Creates a GitHub Copilot coding task with a prompt, repository, and optional branch. If no branch is provided, uses the default branch of the repository.
 
 **Example usage:**
+
 ```
 @github-copilot Create a task to add dark mode support for raycast/extensions
 ```
 
 #### `search-repositories`
+
 Searches for GitHub repositories. Can search recent repositories, repositories by owner, or use a query filter.
 
 **Example usage:**
+
 ```
 @github-copilot Search for repositories in the raycast organization
 ```
@@ -41,4 +44,4 @@ Searches for GitHub repositories. Can search recent repositories, repositories b
 
 ![Tracking Copilot coding agent tasks in Raycast](./metadata/github-copilot-1.png)
 
-*Copilot coding agent and this extension are in public preview and subject to change. During the preview, use of the feature is subject to the [GitHub Pre-release License Terms](https://docs.github.com/en/site-policy/github-terms/github-pre-release-license-terms).*
+_Copilot coding agent and this extension are in public preview and subject to change. During the preview, use of the feature is subject to the [GitHub Pre-release License Terms](https://docs.github.com/en/site-policy/github-terms/github-pre-release-license-terms)._
